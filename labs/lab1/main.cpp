@@ -57,7 +57,7 @@ bool compareMatrix(const std::vector <std::vector <int> >& a, const std::vector 
 
 int main() {
 
-    const int matrix_size = 100;
+    const int matrix_size = 1000;
 
     std::vector <std::vector <int> > a(matrix_size, std::vector <int> (matrix_size));
     std::vector <std::vector <int> > b(matrix_size, std::vector <int> (matrix_size));
@@ -70,32 +70,48 @@ int main() {
     //printMatrix(a);
     //printMatrix(b);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    auto go = std::chrono::high_resolution_clock::now();
     mult(a, b, c, 0, 0, a.size()-1, a.size()-1);
-    auto end = std::chrono::high_resolution_clock::now();
+    auto finish = std::chrono::high_resolution_clock::now();
 
-    auto duration = duration_cast<std::chrono::microseconds>(end - start);
+    auto duration = duration_cast<std::chrono::microseconds>(finish - go);
     std::cout << "Mult without threads: "<< duration.count() << " ms" << std::endl;
+    //printMatrix(c);
+    std::cout << std::endl;
 
-    start = std::chrono::high_resolution_clock::now();
+    std::vector <std::thread> thvec;
+    int max_th_count = 10;
 
-    std::thread th1(mult, std::ref(a), std::ref(b), std::ref(d), 0, 0, a.size() / 2 - 1, a.size() / 2 - 1);
-    std::thread th2(mult, std::ref(a), std::ref(b), std::ref(d), a.size() / 2, a.size() / 2, a.size() - 1, a.size() - 1);
-    std::thread th3(mult, std::ref(a), std::ref(b), std::ref(d), 0, a.size() / 2, a.size() / 2 - 1, a.size() - 1);
-    std::thread th4(mult, std::ref(a), std::ref(b), std::ref(d), a.size() / 2, 0, a.size() - 1, a.size() / 2 - 1);
+    for (int th_num = 1; th_num <= max_th_count; th_num++) {
+        go = std::chrono::high_resolution_clock::now();
+        int chunk_size = matrix_size / th_num, bonus = matrix_size - chunk_size * th_num;
 
-    th1.join();
-    th2.join();
-    th3.join();
-    th4.join();
+        for (int start = 0, end = chunk_size; start < matrix_size; start = end, end = start + chunk_size){
+            if (bonus) {
+                end++;
+                bonus--;
+            }
+            thvec.emplace_back(mult, std::ref(a), std::ref(b), std::ref(d), start, 0,
+                              end - 1, matrix_size - 1);
+        }
+        for (auto &t : thvec) {
+            t.join();
+        }
+        finish = std::chrono::high_resolution_clock::now();
+        std::cout << "Equal? " << compareMatrix(c, d) << std::endl;
+        thvec.clear();
+        for (auto &v: d) {
+            std::fill(v.begin(), v.end(), 0);
+        }
 
-    end = std::chrono::high_resolution_clock::now();
+        duration = duration_cast <std::chrono::microseconds> (finish - go);
+        std::cout << "Mult with " << th_num <<  " threads: "<< duration.count() << " ms" << std::endl;
 
-    duration = duration_cast <std::chrono::microseconds> (end - start);
-    std::cout << "Mult with threads: "<< duration.count() << " ms" << std::endl;
+    }
+
 
     //printMatrix(c);
-    std::cout << compareMatrix(c, d);
+
 
     return 0;
 }
