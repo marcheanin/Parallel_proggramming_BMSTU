@@ -31,7 +31,7 @@ void fillMatrixWithRandom(std::vector <std::vector <int> >& mt) {
     std::mt19937 gen(rd());
     for (int i = 0; i < mt.size(); i++){
         for (int j = 0; j < mt[0].size(); j++){
-            mt[i][j] = 1 + gen() % 100;
+            mt[i][j] = 1 + gen() % 50;
         }
     }
 }
@@ -80,7 +80,7 @@ int main() {
     std::cout << std::endl;
 
     std::vector <std::thread> thvec;
-    int max_th_count = 10;
+    int max_th_count = 100;
 
     for (int th_num = 1; th_num <= max_th_count; th_num++) {
         go = std::chrono::high_resolution_clock::now();
@@ -108,10 +108,5 @@ int main() {
         std::cout << "Mult with " << th_num <<  " threads: "<< duration.count() << " ms" << std::endl;
 
     }
-
-
-    //printMatrix(c);
-
-
     return 0;
 }
