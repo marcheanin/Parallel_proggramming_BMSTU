@@ -4,9 +4,6 @@
 #include <chrono>
 #include <vector>
 #include <ctime>
-#include <mutex>
-
-std::mutex mtx;
 
 void mult(const std::vector <std::vector <int> >& a,
           const std::vector <std::vector <int> >& b,
