@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cassert>
 #include <random>
+#include <chrono>
 
 double norm(std::vector <double> v){
     double sum = 0;
@@ -58,21 +59,59 @@ void printMatrix(const std::vector <std::vector <double> >& mt){
     }
 }
 
-void fillMatrixWithRandom(std::vector <std::vector <double> >& mt) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    for (int i = 0; i < mt.size(); i++){
-        for (int j = 0; j < mt[0].size(); j++){
-            mt[i][j] = (1.0 + gen() % 100) / 10.f;
+int* get_interval(int proc, int size, const int* interval)
+{
+    int* range = new int[2];
+    int interval_size = (interval[1] - interval[0]) / size;
+
+    range[0] = interval[0] + interval_size * proc;
+    range[1] = interval[0] + interval_size * (proc + 1);
+    range[1] = range[1] == interval[1] - 1 ? interval[1] : range[1];
+    return range;
+}
+
+void multiprocess_mult(std::vector <std::vector <double> > A, std::vector <double> x, std::vector <double>& res, int count, int rank) {
+    if (rank == 0){
+        int chunk_size = A.size() / count, bonus = A.size() - chunk_size * count;
+        int to_thread = 1;
+        for (int start = 0, end = chunk_size; start < A.size(); start = end, end = start + chunk_size){
+            if (bonus) {
+                end++;
+                bonus--;
+            }
+            std::cout << start << " " << end - 1 << " " << to_thread << std::endl;
+            int interval[2] = {start, end - 1};
+            MPI_Send(&interval, 2, MPI_INT, to_thread, 0, MPI_COMM_WORLD);
+            to_thread++;
+            for (int i = 1; i < count; i++){
+                int* recieved_res;
+                MPI_Recv(&recieved_res, A[0].size(), MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                for (int i = 0; i < res.size(); i++){
+                    res[i] += recieved_res[i];
+                }
+            }
+        }
+    }
+    else{
+        int interval[2];
+        MPI_Recv(&interval, 2, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::vector <double> part_res;
+        mult(A, x, interval[0], interval[1], part_res);
+        int* send_res = new int[A[0].size()];
+        for (int i = interval[0]; i <= interval[1]; i++){
+            MPI_Send(send_res, A[0].size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
     }
 }
 
-std::vector <double> solve(std::vector <std::vector <double> > A, double eps){
-    int n = A.size(), m = A[0].size();
-    std::vector <double> x(m, 0.1);
+std::vector <double> solve(std::vector <std::vector <double> > A, double eps, int col_ranks, int rank){
+    uint n = A.size(), m = A[0].size();
+    std::vector <double> x(m, 5);
     //std::vector <double> b(m, n+1);
-    std::vector <double> b = {9, 8, 7};
+    std::vector <double> b (n);
+    for (double & i : b){
+        i = n+1;
+    }
     std::vector <double> res(m, 0);
     std::vector <double> Ay(m, 0);
 
@@ -100,43 +139,51 @@ std::vector <double> solve(std::vector <std::vector <double> > A, double eps){
 }
 
 int main(int argc, char** argv) {
-//    // Initialize the MPI environment
-//    MPI_Init(nullptr, nullptr);
+
+    MPI_Init(&argc, &argv);
+
+    int rank = -1, col_ranks = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &col_ranks);
+
+    auto go = std::chrono::high_resolution_clock::now();
+
+//    std::vector <std::vector <double> > a(10, std::vector <double> (10));
+//    for (int i = 0; i < a.size(); i++){
+//        for (int j = 0; j < a[0].size(); j++){
+//            if (i == j) a[i][j] = 2.0;
+//            else a[i][j] = 1.0;
+//        }
+//    }
 //
-//    // Get the number of processes
-//    int world_size;
-//    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+//    printMatrix(a);
+//    auto res = solve(a, 0.00001, col_ranks, rank);
+//    for (double re : res){
+//        std::cout << re << " ";
+//    }
+//    std::cout << std::endl;
 //
-//    // Get the rank of the process
-//    int world_rank;
-//    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+//    auto finish = std::chrono::high_resolution_clock::now();
 //
-//    // Get the name of the processor
-//    char processor_name[MPI_MAX_PROCESSOR_NAME];
-//    int name_len;
-//    MPI_Get_processor_name(processor_name, &name_len);
-//
-//    // Print off a hello world message
-//    printf("Hello world from processor %s, rank %d out of %d processors\n",
-//           processor_name, world_rank, world_size);
-//
-//    // Finalize the MPI environment.
-//    MPI_Finalize();
+//    auto duration = duration_cast<std::chrono::microseconds>(finish - go);
+//    std::cout << "Time: "<< duration.count() << " ms" << std::endl;
 
     std::vector <std::vector <double> > a(3, std::vector <double> (3));
     for (int i = 0; i < a.size(); i++){
         for (int j = 0; j < a[0].size(); j++){
-            std::cin >> a[i][j];
+            if (i == j) a[i][j] = 2.0;
+            else a[i][j] = 1.0;
         }
     }
-    //fillMatrixWithRandom(a);
-    printMatrix(a);
-    auto res = solve(a, 0.00001);
-    for (double re : res){
-        std::cout << re << " ";
-    }
-    std::cout << std::endl;
+    std::vector <double> x = {1, 2, 3};
 
+    std::vector <double> res;
+    multiprocess_mult(a, x, res, col_ranks, rank);
+
+    for (double re : res){
+       std::cout << re << " ";
+    }
+    MPI_Finalize();
 
 }
 
