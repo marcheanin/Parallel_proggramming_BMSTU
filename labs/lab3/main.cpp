@@ -48,6 +48,16 @@ void default_mult(std::vector <std::vector <double> > A, std::vector <double> x,
 }
 
 std::vector <double> mult_digit_vector(double a, std::vector <double> b) {
+    int i = 0;
+    #pragma omp parallel for shared(a, b) private(i)
+    for (int i = 0; i < b.size(); i++){
+        b[i] *= a;
+    }
+    return b;
+}
+
+std::vector <double> mult_digit_vector_default(double a, std::vector <double> b) {
+    int i = 0;
     for (int i = 0; i < b.size(); i++){
         b[i] *= a;
     }
@@ -137,7 +147,7 @@ std::vector <double> solve_without_parallel(std::vector <std::vector <double> > 
         auto y = vector_diff(res, b);
         default_mult(A, y, 0, n-1, Ay);
         tau = vector_mult(y, Ay) / vector_mult(Ay, Ay);
-        x = vector_diff(x, mult_digit_vector(tau, y));
+        x = vector_diff(x, mult_digit_vector_default(tau, y));
 
         std::cout << "tau: " << tau << std::endl;
 
