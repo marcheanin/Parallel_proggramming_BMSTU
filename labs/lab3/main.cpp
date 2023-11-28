@@ -26,6 +26,7 @@ double vector_mult(std::vector <double> a, std::vector <double> b){
 
 void mult(std::vector <std::vector <double> > A, std::vector <double> x, int raw1, int raw2, std::vector <double>& res){
     int i, j;
+    omp_set_num_threads(3);
     #pragma omp parallel for shared(A, x, res, raw1, raw2) private(i, j)
     for (i = raw1; i <= raw2; i++){
         res[i] = 0;
@@ -49,8 +50,9 @@ void default_mult(std::vector <std::vector <double> > A, std::vector <double> x,
 
 std::vector <double> mult_digit_vector(double a, std::vector <double> b) {
     int i = 0;
+    omp_set_num_threads(3);
     #pragma omp parallel for shared(a, b) private(i)
-    for (int i = 0; i < b.size(); i++){
+    for (i = 0; i < b.size(); i++){
         b[i] *= a;
     }
     return b;
@@ -130,7 +132,7 @@ std::vector <double> solve(std::vector <std::vector <double> > A, double eps){
 
 std::vector <double> solve_without_parallel(std::vector <std::vector <double> > A, double eps){
     int n = A.size(), m = A[0].size();
-    std::vector <double> x(m, 10);
+    std::vector <double> x(m, 8.1);
     //std::vector <double> b(m, n+1);
     std::vector <double> b (n);
     for (double & i : b){
@@ -176,17 +178,17 @@ int main(int argc, char** argv) {
     }
 
     auto go = std::chrono::high_resolution_clock::now();
-    auto res = solve(a, 0.00001);
+    auto res = solve(a, 0.000001);
     auto finish = std::chrono::high_resolution_clock::now();
 
     auto duration =  std::chrono::duration_cast <std::chrono::microseconds> (finish - go);
     std::cout << duration.count() << " ms" << std::endl;
 
-    go = std::chrono::high_resolution_clock::now();
-    auto res1 = solve_without_parallel(a, 0.00001);
-    finish = std::chrono::high_resolution_clock::now();
-
-    duration =  std::chrono::duration_cast <std::chrono::microseconds> (finish - go);
+//    auto go = std::chrono::high_resolution_clock::now();
+//    auto res1 = solve_without_parallel(a, 0.000001);
+//    auto finish = std::chrono::high_resolution_clock::now();
+//
+//    auto duration =  std::chrono::duration_cast <std::chrono::microseconds> (finish - go);
     std::cout << duration.count() << " ms" << std::endl;
 
 }
