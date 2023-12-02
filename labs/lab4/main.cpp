@@ -11,11 +11,6 @@ std::mutex print_lock;
 
 std::atomic <bool> meal_flag {true};
 
-//class Waiter{
-//    std::mutex mutex;
-//    std::condition_variable cv;
-//};
-
 class Fork{
 public:
     std::mutex mutex;
@@ -76,28 +71,20 @@ public:
     }
 
     void eat() {
-        //while(lfork.locked);
-        //std::lock_guard<std::mutex> left_fork_lock(lfork.mutex, std::adopt_lock);
         lfork.take_fork();
-        //lfork.locked = true;
 
         status = "tacked left fork";
 
         thread_local std::uniform_int_distribution<> forking(1, 3);
         std::this_thread::sleep_for(std::chrono::milliseconds(forking(rd) * 100));
 
-        //while(rfork.locked);
-        //std::lock_guard<std::mutex> right_fork_lock(rfork.mutex, std::adopt_lock);
         rfork.take_fork();
-        //lfork.locked = true;
 
-        //output(" is eating");
         status = "is eating";
 
         thread_local std::uniform_int_distribution <> dist (1, 3);
         std::this_thread::sleep_for(std::chrono::milliseconds(dist(rd) * 100));
 
-        //output(" finished eating.");
         status = "finished eating";
         lfork.free();
         rfork.free();
@@ -140,10 +127,6 @@ int main() {
             std::cout << philosopher.get_status();
         }
         std::cout << std::endl;
-//        for (auto & fork : table.forks) {
-//            std::cout << fork.mutex.try_lock() << " ";
-//        }
-//        std::cout << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 
